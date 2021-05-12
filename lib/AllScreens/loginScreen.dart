@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:shopper_app/AllScreens/registrationScreen.dart';
+import 'package:shopper_app/AllWidgets/progessDialog.dart';
 import 'package:shopper_app/main.dart';
 
 import 'mainscreen.dart';
@@ -97,17 +98,16 @@ class LoginScreen extends StatelessWidget {
                         shape: new RoundedRectangleBorder(
                             borderRadius: new BorderRadius.circular(24.0)),
                         onPressed: () {
-                          if (!emailTextEditingController.text
-                              .contains("@")) {
+                          if (!emailTextEditingController.text.contains("@")) {
                             displayToastMessage(
                                 "Email address is not valid", context);
-                          } else if (passwordTextEditingController.text.isEmpty) {
+                          } else if (passwordTextEditingController
+                              .text.isEmpty) {
                             displayToastMessage(
-                                "Password is mandatory",
-                                context);
+                                "Password is mandatory", context);
                           } else {
                             loginAndAuthenticateUser(context);
-                          }   
+                          }
                         },
                       ),
                     ],
@@ -130,11 +130,18 @@ class LoginScreen extends StatelessWidget {
 
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   void loginAndAuthenticateUser(BuildContext context) async {
+    showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return ProgressDialog(message: "Authenticating, please wait...");
+        });
     final User firebaseUser = (await _firebaseAuth
             .signInWithEmailAndPassword(
                 email: emailTextEditingController.text,
                 password: passwordTextEditingController.text)
             .catchError((errMsg) {
+      Navigator.pop(context);
       displayToastMessage("Error: " + errMsg.toString(), context);
     }))
         .user;
@@ -142,21 +149,22 @@ class LoginScreen extends StatelessWidget {
     if (firebaseUser != null) {
       // Login user
 
-      usersRef
-          .child(firebaseUser.uid)
-          .once()
-          .then((DataSnapshot snap) {
-                if (snap.value != null) {
-                  Navigator.pushNamedAndRemoveUntil(
-                    context, MainScreen.idScreen, (route) => false);
-                  displayToastMessage("You are now logged in!", context);
-                } else {
-                  _firebaseAuth.signOut();
-                  displayToastMessage("No record exist for this user. Please create new account", context);
-                }
-              });
+      usersRef.child(firebaseUser.uid).once().then((DataSnapshot snap) {
+        if (snap.value != null) {
+          Navigator.pushNamedAndRemoveUntil(
+              context, MainScreen.idScreen, (route) => false);
+          displayToastMessage("You are now logged in!", context);
+        } else {
+          Navigator.pop(context);
+          _firebaseAuth.signOut();
+          displayToastMessage(
+              "No record exist for this user. Please create new account",
+              context);
+        }
+      });
     } else {
       //error ocurred
+      Navigator.pop(context);
       displayToastMessage("Error occured, ", context);
     }
   }
